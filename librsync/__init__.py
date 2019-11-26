@@ -1,10 +1,13 @@
 import ctypes
 import ctypes.util
+from contextlib import contextmanager
 import os
 import sys
 import tempfile
 from functools import wraps
 from pathlib import Path
+
+from librsync.util import force_bytes, resource_manager
 
 try:
     import syslog
@@ -23,7 +26,11 @@ except ImportError:
 
 base_lib_path = Path(__file__).parent
 lib_filename = (
-    "librsync.so" if os.name == "posix" else "rsync.dll" if sys.platform == "win32" else None
+    "librsync.so"
+    if os.name == "posix"
+    else "rsync.dll"
+    if sys.platform == "win32"
+    else None
 )
 if lib_filename is None:
     raise NotImplementedError("Librsync is not supported on your platform")
@@ -54,6 +61,7 @@ RS_BLOCKED = 1
 RS_JOB_BLOCKSIZE = 65536
 RS_DEFAULT_STRONG_LEN = 8
 RS_DEFAULT_BLOCK_LEN = 2048
+RS_MD4_SIG_MAGIC = 0x72730136
 
 
 CharPtr = ctypes.POINTER(ctypes.c_char)
@@ -130,10 +138,118 @@ _librsync.rs_job_free.argtypes = (ctypes.c_void_p,)
 patch_callback = ctypes.CFUNCTYPE(
     ctypes.c_int,
     ctypes.c_void_p,
+    # TODO: we need platform independant intmax_t
     ctypes.c_longlong if sys.platform == "win32" else ctypes.c_int,
     ctypes.POINTER(ctypes.c_size_t),
-    ctypes.POINTER(ctypes.c_void_p)
+    ctypes.POINTER(ctypes.c_void_p),
 )
+
+
+FILE = ctypes.c_void_p
+
+
+"""
+/** Open a file with special handling for stdin or stdout.
+ *
+ * This provides a platform independent way to open large binary files. A
+ * filename "" or "-" means use stdin for reading, or stdout for writing.
+ *
+ * \param filename - The filename to open.
+ *
+ * \param mode - fopen style mode string.
+ *
+ * \param force - bool to force overwriting of existing files. */
+LIBRSYNC_EXPORT FILE *rs_file_open(char const *filename, char const *mode,
+                                   int force);
+"""
+_librsync.rs_file_open.restype = FILE
+_librsync.rs_file_open.argtypes = (ctypes.c_char_p, ctypes.POINTER(ctypes.c_char), ctypes.c_int)
+
+
+def fopen(path: str, flags: str) -> FILE:
+    return _librsync.rs_file_open(force_bytes(path), force_bytes(flags), 1)
+
+
+"""
+/** Close a file with special handling for stdin or stdout.
+ *
+ * This will not actually close the file if it is stdin or stdout.
+ *
+ * \param file - the stdio file to close. */
+LIBRSYNC_EXPORT int rs_file_close(FILE *file);
+"""
+_librsync.rs_file_close.restype = ctypes.c_int
+_librsync.rs_file_close.argtypes = (FILE,)
+
+
+def fclose(handle: FILE) -> None:
+    return _librsync.rs_file_close(handle)
+
+
+"""
+/** Generate the signature of a basis file, and write it out to another.
+ *
+ * \param old_file Stdio readable file whose signature will be generated.
+ *
+ * \param sig_file Writable stdio file to which the signature will be written./
+ *
+ * \param block_len block size for signature generation, in bytes
+ *
+ * \param strong_len truncated length of strong checksums, in bytes
+ *
+ * \param sig_magic A signature magic number indicating what format to use.
+ *
+ * \param stats Optional pointer to receive statistics.
+ *
+ * \sa \ref api_whole */
+LIBRSYNC_EXPORT rs_result rs_sig_file(FILE *old_file, FILE *sig_file,
+                                      size_t block_len, size_t strong_len,
+                                      rs_magic_number sig_magic,
+                                      rs_stats_t *stats);
+"""
+_librsync.rs_sig_file.restype = ctypes.c_int
+_librsync.rs_sig_file.argtypes = (
+    FILE, FILE, ctypes.c_size_t, ctypes.c_size_t, ctypes.c_int, ctypes.c_void_p
+)
+
+"""
+/** Load signatures from a signature file into memory.
+ *
+ * \param sig_file Readable stdio file from which the signature will be read.
+ *
+ * \param sumset on return points to the newly allocated structure.
+ *
+ * \param stats Optional pointer to receive statistics.
+ *
+ * \sa \ref api_whole */
+LIBRSYNC_EXPORT rs_result rs_loadsig_file(FILE *sig_file,
+                                          rs_signature_t **sumset,
+                                          rs_stats_t *stats);
+"""
+_librsync.rs_loadsig_file.restype = ctypes.c_int
+_librsync.rs_loadsig_file.argtypes = (
+    FILE, ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p
+)
+
+"""
+/** Generate a delta between a signature and a new file into a delta file.
+ *
+ * \sa \ref api_whole */
+LIBRSYNC_EXPORT rs_result rs_delta_file(rs_signature_t *, FILE *new_file,
+                                        FILE *delta_file, rs_stats_t *);
+"""
+_librsync.rs_delta_file.restype = ctypes.c_int
+_librsync.rs_delta_file.argtypes = (ctypes.c_void_p, FILE, FILE, ctypes.c_void_p)
+
+"""
+/** Apply a patch, relative to a basis, into a new file.
+ *
+ * \sa \ref api_whole */
+LIBRSYNC_EXPORT rs_result rs_patch_file(FILE *basis_file, FILE *delta_file,
+                                        FILE *new_file, rs_stats_t *);
+"""
+_librsync.rs_patch_file.restype = ctypes.c_int
+_librsync.rs_patch_file.argtypes = (FILE, FILE, FILE, ctypes.c_void_p)
 
 
 class LibrsyncError(Exception):
@@ -145,7 +261,9 @@ def seekable(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         s = args[0]
-        assert callable(getattr(s, "seek", None)), "Must provide seekable " "file-like object"
+        assert callable(getattr(s, "seek", None)), (
+            "Must provide seekable " "file-like object"
+        )
         return f(*args, **kwargs)
 
     return wrapper
@@ -267,3 +385,57 @@ def patch(f, d, o=None):
     finally:
         _librsync.rs_job_free(job)
     return o
+
+
+def signature_from_paths(
+    base_path: str, sig_path: str,
+    block_len: int = RS_DEFAULT_BLOCK_LEN,
+    strong_len: int = RS_DEFAULT_STRONG_LEN
+) -> bool:
+    with resource_manager() as rm:
+        base_fp = rm.add(fopen(base_path, "rb"), fclose)
+        sig_fp = rm.add(fopen(sig_path, "wb"), fclose)
+        return rm.ok() and _librsync.rs_sig_file(
+            base_fp, sig_fp, block_len, strong_len, RS_MD4_SIG_MAGIC, None
+        ) == 0
+
+
+@contextmanager
+def loadsignature_from_paths(sig_path: str) -> ctypes.c_void_p:
+    with resource_manager() as rm:
+        sig_fp = rm.add(fopen(sig_path, "rb"), fclose)
+        if rm.ok():
+            sig = ctypes.c_void_p()
+            if _librsync.rs_loadsig_file(sig_fp, ctypes.byref(sig), None) == 0:
+                try:
+                    _librsync.rs_build_hash_table(sig)
+                    yield sig
+                finally:
+                    _librsync.rs_free_sumset(sig)
+            else:
+                yield None
+        else:
+            yield None
+
+
+def delta_from_paths(sig_path: str, new_path: str, delta_path: str) -> bool:
+    with resource_manager() as rm:
+        new_fp = rm.add(fopen(new_path, "rb"), fclose)
+        delta_fp = rm.add(fopen(delta_path, "wb"), fclose)
+        if rm.ok():
+            with loadsignature_from_paths(sig_path) as sig:
+                return sig and _librsync.rs_delta_file(sig, new_fp, delta_fp, None) == 0
+
+        return False
+
+
+def patch_from_paths(base_path: str, delta_path: str, result_path: str) -> bool:
+    with resource_manager() as rm:
+        base_fp = rm.add(fopen(base_path, "rb"), fclose)
+        delta_fp = rm.add(fopen(delta_path, "rb"), fclose)
+        result_fp = rm.add(fopen(result_path, "wb"), fclose)
+        return rm.ok() and _librsync.rs_patch_file(
+            base_fp, delta_fp, result_fp, None
+        ) == 0
+
+    return False

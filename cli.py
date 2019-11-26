@@ -2,20 +2,6 @@ import click
 import librsync
 
 
-class FileManger:
-    def __init__(self):
-        self.fds = []
-
-    def open(self, *args, **kwargs):
-        fd = open(*args, **kwargs)
-        self.fds.append(fd)
-        return fd
-
-    def close(self):
-        for fd in self.fds:
-            fd.close()
-
-
 @click.group()
 @click.pass_context
 def cli(ctx):
@@ -25,14 +11,27 @@ def cli(ctx):
 @cli.command()
 @click.pass_context
 @click.argument("base")
+@click.argument("signature")
+def signature(ctx, base, signature):
+    librsync.signature_from_paths(base, signature)
+
+
+@cli.command()
+@click.pass_context
+@click.argument("signature")
+@click.argument("new")
+@click.argument("delta")
+def delta(ctx, signature, new, delta):
+    librsync.delta_from_paths(signature, new, delta)
+
+
+@cli.command()
+@click.pass_context
+@click.argument("base")
 @click.argument("delta")
 @click.argument("result")
 def patch(ctx, base, delta, result):
-    fm = FileManger()
-    try:
-        librsync.patch(fm.open(base, "rb"), fm.open(delta, "rb"), fm.open(result, "wb"))
-    finally:
-        fm.close()
+    librsync.patch_from_paths(base, delta, result)
 
 
 if __name__ == "__main__":
