@@ -1,0 +1,20 @@
+[default]
+ENVIRONMENT = "dev"
+STORAGE_BUCKET = "vectorworks-devel-storage"
+INTERNAL_BUCKET = "vectorworks-devel-storage-internal"
+SYNC_METADATA_PREFIX = "rsync"
+LOCAL_DB = "db/history.db"
+
+[development]
+ENVIRONMENT = "dev"
+STORAGE_BUCKET = "vectorworks-devel-storage"
+INTERNAL_BUCKET = "vectorworks-devel-storage-internal"
+SYNC_METADATA_PREFIX = "rsync"
+LOCAL_DB = "db/history.db"
+
+[testing]
+ENVIRONMENT = "testing"
+STORAGE_BUCKET = "vectorworks-devel-storage"
+INTERNAL_BUCKET = "vectorworks-devel-storage-internal"
+SYNC_METADATA_PREFIX = "rsync"
+LOCAL_DB = "db/history.db"

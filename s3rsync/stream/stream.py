@@ -34,13 +34,14 @@ class BufferReader(IOBase):
     def readinto(self, buffer):
         if self.buffer is None:
             self.buffer = self.queue.get()
-        if len(buffer) >= len(self.buffer) - self.buffer_offset:
-            buffer[: len(self.buffer) - self.buffer_offset] = self.buffer[self.buffer_offset:]
-            result = len(self.buffer) - self.buffer_offset
+        buffer_space = len(self.buffer) - self.buffer_offset
+        if len(buffer) >= buffer_space:
+            buffer[:buffer_space] = self.buffer[self.buffer_offset:]
+            result = buffer_space
             self.buffer = None
             self.buffer_offset = 0
         else:
-            buffer[:] = self.buffer[self.buffer_offset:self.buffer_offset + len(buffer)]
+            buffer[:] = self.buffer[self.buffer_offset:buffer_space]
             self.buffer_offset += len(buffer)
         self.offset += result
         return result

@@ -19,3 +19,7 @@ dist
 build
 
 *.DS_Store
+
+# Project specific
+/db
+/root

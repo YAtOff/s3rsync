@@ -12,10 +12,10 @@ def hello():
 @app.route("/stream")
 def streamed_response():
     def generate():
-        yield b'Hello '
-        yield request.args['name'].encode('utf-8')
-        yield b'!'
+        yield b"Hello "
+        yield request.args["name"].encode("utf-8")
+        yield b"!"
+
     return Response(
-        stream_with_context(generate()),
-        content_type="application/octet-stream"
+        stream_with_context(generate()), content_type="application/octet-stream"
     )

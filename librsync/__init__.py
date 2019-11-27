@@ -154,11 +154,11 @@ FILE = ctypes.c_void_p
  * This provides a platform independent way to open large binary files. A
  * filename "" or "-" means use stdin for reading, or stdout for writing.
  *
- * \param filename - The filename to open.
+ * \\param filename - The filename to open.
  *
- * \param mode - fopen style mode string.
+ * \\param mode - fopen style mode string.
  *
- * \param force - bool to force overwriting of existing files. */
+ * \\param force - bool to force overwriting of existing files. */
 LIBRSYNC_EXPORT FILE *rs_file_open(char const *filename, char const *mode,
                                    int force);
 """
@@ -175,7 +175,7 @@ def fopen(path: str, flags: str) -> FILE:
  *
  * This will not actually close the file if it is stdin or stdout.
  *
- * \param file - the stdio file to close. */
+ * \\param file - the stdio file to close. */
 LIBRSYNC_EXPORT int rs_file_close(FILE *file);
 """
 _librsync.rs_file_close.restype = ctypes.c_int
@@ -189,19 +189,19 @@ def fclose(handle: FILE) -> None:
 """
 /** Generate the signature of a basis file, and write it out to another.
  *
- * \param old_file Stdio readable file whose signature will be generated.
+ * \\param old_file Stdio readable file whose signature will be generated.
  *
- * \param sig_file Writable stdio file to which the signature will be written./
+ * \\param sig_file Writable stdio file to which the signature will be written./
  *
- * \param block_len block size for signature generation, in bytes
+ * \\param block_len block size for signature generation, in bytes
  *
- * \param strong_len truncated length of strong checksums, in bytes
+ * \\param strong_len truncated length of strong checksums, in bytes
  *
- * \param sig_magic A signature magic number indicating what format to use.
+ * \\param sig_magic A signature magic number indicating what format to use.
  *
- * \param stats Optional pointer to receive statistics.
+ * \\param stats Optional pointer to receive statistics.
  *
- * \sa \ref api_whole */
+ * \\sa \\ref api_whole */
 LIBRSYNC_EXPORT rs_result rs_sig_file(FILE *old_file, FILE *sig_file,
                                       size_t block_len, size_t strong_len,
                                       rs_magic_number sig_magic,
@@ -215,13 +215,13 @@ _librsync.rs_sig_file.argtypes = (
 """
 /** Load signatures from a signature file into memory.
  *
- * \param sig_file Readable stdio file from which the signature will be read.
+ * \\param sig_file Readable stdio file from which the signature will be read.
  *
- * \param sumset on return points to the newly allocated structure.
+ * \\param sumset on return points to the newly allocated structure.
  *
- * \param stats Optional pointer to receive statistics.
+ * \\param stats Optional pointer to receive statistics.
  *
- * \sa \ref api_whole */
+ * \\sa \\ref api_whole */
 LIBRSYNC_EXPORT rs_result rs_loadsig_file(FILE *sig_file,
                                           rs_signature_t **sumset,
                                           rs_stats_t *stats);
@@ -234,7 +234,7 @@ _librsync.rs_loadsig_file.argtypes = (
 """
 /** Generate a delta between a signature and a new file into a delta file.
  *
- * \sa \ref api_whole */
+ * \\sa \\ref api_whole */
 LIBRSYNC_EXPORT rs_result rs_delta_file(rs_signature_t *, FILE *new_file,
                                         FILE *delta_file, rs_stats_t *);
 """
@@ -244,7 +244,7 @@ _librsync.rs_delta_file.argtypes = (ctypes.c_void_p, FILE, FILE, ctypes.c_void_p
 """
 /** Apply a patch, relative to a basis, into a new file.
  *
- * \sa \ref api_whole */
+ * \\sa \\ref api_whole */
 LIBRSYNC_EXPORT rs_result rs_patch_file(FILE *basis_file, FILE *delta_file,
                                         FILE *new_file, rs_stats_t *);
 """

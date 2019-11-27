@@ -21,7 +21,7 @@ SEEK_END = 2
 class Cursor(object):
     @classmethod
     def create(cls, filename):
-        with open(filename, 'rb') as f:
+        with open(filename, "rb") as f:
             data = f.read()
             return cls(data)
 
@@ -40,7 +40,7 @@ class Cursor(object):
 
     def read(self, length):
         if length > self.size - self.position:
-            raise CursorError('Out of bounds')
+            raise CursorError("Out of bounds")
         data = self.buffer[self.position:self.position + length]
         self.seek(length)
         return data
@@ -58,7 +58,7 @@ class Buffer(object):
 
     def get(self, start, end):
         if not self.contains(start, end):
-            raise CursorError('Out of range')
+            raise CursorError("Out of range")
         return self.data[start - self.start:end - self.start]
 
 
@@ -66,7 +66,7 @@ class HTTPCursor(object):
     def __init__(self, file):
         self.file = file
         self.position = 0
-        self.buffer = Buffer(0, '')
+        self.buffer = Buffer(0, "")
 
     def seek(self, length, from_position=SEEK_CUR):
         if from_position == SEEK_CUR:
@@ -88,8 +88,9 @@ class HTTPCursor(object):
         download_params = DownloadParams.from_file_version(
             self.file.latest_version,
             extra_headers={
-                'Range': 'bytes=%d-%d' % (self.position, self.position + request_data_length - 1)
-            }
+                "Range": "bytes=%d-%d"
+                % (self.position, self.position + request_data_length - 1)
+            },
         )
         buffer = BytesIO()
         download(download_params, buffer)

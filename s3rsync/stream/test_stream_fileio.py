@@ -1,6 +1,6 @@
 import sys
 
-from s3rsync.stream import pipeline
+from s3rsync.stream.stream import pipeline
 
 
 class FileManger:
@@ -20,10 +20,11 @@ class FileManger:
 fm = FileManger()
 try:
     reader = pipeline(
-        fm.open("./data/file1", "rb"), [fm.open("./data/delta2", "rb"), fm.open("./data/delta3", "rb")]
+        fm.open("./data/file1", "rb"),
+        [fm.open("./data/delta2", "rb"), fm.open("./data/delta3", "rb")],
     )
     while True:
-        buf = reader.read(1024)
+        buf = reader.read(1024)  # type: ignore
         if not buf:
             break
         print("result:", buf)
