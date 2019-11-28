@@ -12,7 +12,7 @@ from s3rsync.local_db import open_database
 @click.option("--once", default=False)
 def main(s3_prefix, root_folder, once):
     with open_database(settings.LOCAL_DB):
-        worker = SyncWorker(Session(s3_prefix, root_folder))
+        worker = SyncWorker(Session.create(s3_prefix, root_folder))
         if once:
             worker.run_once()
         else:

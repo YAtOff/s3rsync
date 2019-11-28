@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
-from s3rsync.models import StoredNodeHistory
 from s3rsync.history import NodeHistory
+from s3rsync.models import StoredNodeHistory
 from s3rsync.session import Session
-from s3rsync.util.file import hash_path
+from s3rsync.util.file import hash_path, file_checksum
 
 
 @dataclass
@@ -40,7 +42,7 @@ class LocalNode:
     modified_time: float
     created_time: float
     size: int
-    etag: str
+    etag: Optional[str]
 
     def __post_init__(self):
         self.key = hash_path(self.path)
@@ -55,7 +57,7 @@ class LocalNode:
             modified_time=stat.st_mtime,
             created_time=stat.st_ctime,
             size=stat.st_size,
-            etag="",
+            etag=None
         )
 
     def updated(self, stored: StoredNodeHistory) -> bool:
@@ -63,3 +65,16 @@ class LocalNode:
             self.modified_time != stored.local_modified_time
             or self.created_time != stored.local_created_time
         )
+
+    @property
+    def local_path(self) -> Path:
+        return self.root_folder / self.path
+
+    @property
+    def local_fspath(self) -> str:
+        return os.fspath(self.local_path)
+
+    def calc_etag(self) -> str:
+        if self.etag is None:
+            self.etag = file_checksum(self.local_fspath) or ""
+        return self.etag

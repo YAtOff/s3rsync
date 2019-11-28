@@ -39,12 +39,16 @@ def upload_from_fd(client, fd, bucket, s3_path):
     client.upload_fileobj(fd, bucket, s3_path)
 
 
-def download_file(client, bucket, s3_path, local_path):
-    client.download_file(bucket, s3_path, local_path)
+def download_file(client, bucket, s3_path, local_path, version=None):
+    client.download_file(
+        bucket, s3_path, local_path, ExtraArgs={'VersionId': version}
+    )
 
 
-def download_to_fd(client, bucket, s3_path, fd):
-    client.download_fileobj(bucket, s3_path, fd)
+def download_to_fd(client, bucket, s3_path, fd, version=None):
+    client.download_fileobj(
+        bucket, s3_path, fd, ExtraArgs={'VersionId': version}
+    )
 
 
 def delete_file(client, bucket, s3_path):

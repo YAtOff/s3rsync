@@ -4,6 +4,7 @@ STORAGE_BUCKET = "vectorworks-devel-storage"
 INTERNAL_BUCKET = "vectorworks-devel-storage-internal"
 SYNC_METADATA_PREFIX = "rsync"
 LOCAL_DB = "db/history.db"
+SIGNATURE_FOLDER = "db/signature"
 
 [development]
 ENVIRONMENT = "dev"
@@ -11,6 +12,7 @@ STORAGE_BUCKET = "vectorworks-devel-storage"
 INTERNAL_BUCKET = "vectorworks-devel-storage-internal"
 SYNC_METADATA_PREFIX = "rsync"
 LOCAL_DB = "db/history.db"
+SIGNATURE_FOLDER = "db/signature"
 
 [testing]
 ENVIRONMENT = "testing"
@@ -18,3 +20,4 @@ STORAGE_BUCKET = "vectorworks-devel-storage"
 INTERNAL_BUCKET = "vectorworks-devel-storage-internal"
 SYNC_METADATA_PREFIX = "rsync"
 LOCAL_DB = "db/history.db"
+SIGNATURE_FOLDER = "db/signature"

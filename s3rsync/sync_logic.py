@@ -1,4 +1,6 @@
-from s3rsync.history import RemoteNodeHistory
+from typing import cast
+
+from s3rsync.history import RemoteNodeHistory, NodeHistory
 from s3rsync.models import StoredNodeHistory
 from s3rsync.node import LocalNode
 from s3rsync.sync_action import (
@@ -34,7 +36,7 @@ def handle_node(
     elif remote and local and not stored:
         if remote.deleted:
             return delete_local(local, stored)
-        elif remote.history.etag == local.etag:
+        elif cast(NodeHistory, remote.history).etag == local.etag:
             return save_history(remote, local)
         else:
             return conflict(remote, local, stored)
@@ -47,7 +49,7 @@ def handle_node(
             else:
                 return delete_local(local, stored)
         elif local_updated and remote_updated:
-            if remote.history.etag == local.etag:
+            if cast(NodeHistory, remote.history).etag == local.etag:
                 return nop()
             else:
                 return conflict(remote, local, stored)

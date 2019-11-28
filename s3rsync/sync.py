@@ -102,7 +102,7 @@ def fetch_history(session: Session) -> Tuple[List[RemoteNodeHistory], List[Store
     remote_history_versions = list_versions(
         session.s3_client,
         session.internal_bucket,
-        f"{session.sync_metadata_prefix}/{session.s3_prefix}/history/",
+        f"{session.s3_prefix}/{session.sync_metadata_prefix}/history/",
     )
     remote_history = (
         RemoteNodeHistory.from_s3_object(v) for v in remote_history_versions
