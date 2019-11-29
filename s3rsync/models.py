@@ -10,6 +10,16 @@ from s3rsync.local_db import database
 from s3rsync.history import NodeHistory
 
 
+def recored_as_dict(record):
+    if isinstance(record, peewee.Model):
+        return {
+            f: recored_as_dict(getattr(record, f))
+            for f in record._meta.sorted_field_names
+        }
+    else:
+        return record
+
+
 class JSONField(peewee.TextField):
     def db_value(self, value):
         return json.dumps(value)
@@ -35,8 +45,8 @@ class StoredNodeHistory(peewee.Model):
     key = peewee.CharField(index=True)
     root_folder = peewee.ForeignKeyField(RootFolder, on_delete="CASCADE")
     data = JSONField()
-    local_modified_time = peewee.FloatField()
-    local_created_time = peewee.FloatField()
+    local_modified_time = peewee.IntegerField()
+    local_created_time = peewee.IntegerField()
     remote_history_etag = peewee.DateTimeField()
 
     class Meta:
@@ -48,7 +58,7 @@ class StoredNodeHistory(peewee.Model):
     def history(self) -> NodeHistory:
         if self._history is None:
             self._history = {}
-        key = self.remote_modified_time
+        key = self.remote_history_etag
         if key not in self._history:
             self._history[key] = NodeHistory.parse_obj(self.data)
         return self._history[key]

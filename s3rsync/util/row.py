@@ -13,7 +13,7 @@ class Row:
         self.values = values
 
     def __iter__(self):
-        return iter((self.path, *self.values))
+        return iter((self.key, *self.values))
 
     @classmethod
     def create(cls, key: str, values: Iterable[Any]) -> Row:

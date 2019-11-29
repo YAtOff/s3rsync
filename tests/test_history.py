@@ -7,6 +7,7 @@ import pytest
 from faker import Faker, providers
 
 from s3rsync.history import NodeHistory, NodeHistoryEntry
+from s3rsync.util.timeutil import now_as_iso
 
 fake = Faker()
 fake.add_provider(providers.file)
@@ -73,7 +74,8 @@ class HistoryBuilder:
                 base_version=generate.version,
                 base_size=delta_size * 1000000,
                 has_delta=True,
-                delta_size=delta_size
+                delta_size=delta_size,
+                timestamp=now_as_iso()
             ),
             **extra_args
         )

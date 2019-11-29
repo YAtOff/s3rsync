@@ -5,7 +5,7 @@ import os
 import os.path
 from pathlib import Path
 import tempfile
-from typing import Generator, Optional
+from typing import Generator, Optional, Dict
 
 
 def iter_folder(folder: Path) -> Generator[Path, None, None]:
@@ -43,3 +43,8 @@ def file_checksum(file_name: str, hash_func: str = "md5") -> Optional[str]:
     except IOError:
         logging.error(u"[FILE] Error calculating checksum", exc_info=True)
         return None
+
+
+def get_stats(path: str) -> Dict:
+    stats = Path(path).stat()
+    return {"size": stats.st_size / (1024 * 1024)}

@@ -1,3 +1,8 @@
+import logging
+
+from s3rsync.util.file import get_stats
+
+
 CHUNK_SIZE = 1000
 
 
@@ -33,6 +38,7 @@ def get_file_metadata(client, bucket, s3_path):
 
 def upload_file(client, local_path, bucket, s3_path):
     client.upload_file(local_path, bucket, s3_path)
+    logging.info("⬆ %s [%.3fMB]", s3_path, get_stats(local_path)["size"])
 
 
 def upload_from_fd(client, fd, bucket, s3_path):
@@ -40,19 +46,26 @@ def upload_from_fd(client, fd, bucket, s3_path):
 
 
 def download_file(client, bucket, s3_path, local_path, version=None):
-    client.download_file(
-        bucket, s3_path, local_path, ExtraArgs={'VersionId': version}
-    )
+    extra_args = {'VersionId': version} if version else None
+    client.download_file(bucket, s3_path, local_path, ExtraArgs=extra_args)
+    logging.info("⬇ %s [%.3fMB]", s3_path, get_stats(local_path)["size"])
 
 
 def download_to_fd(client, bucket, s3_path, fd, version=None):
-    client.download_fileobj(
-        bucket, s3_path, fd, ExtraArgs={'VersionId': version}
-    )
+    extra_args = {'VersionId': version} if version else None
+    client.download_fileobj(bucket, s3_path, fd, ExtraArgs=extra_args)
 
 
-def delete_file(client, bucket, s3_path):
-    client.delete_object(bucket, s3_path)
+def delete_file(client, bucket, s3_path, version=None):
+    kwargs = {
+        "Bucket": bucket,
+        "Key": s3_path
+    }
+    if version:
+        kwargs['VersionId'] = version
+
+    client.delete_object(**kwargs)
+    logging.info("❌ %s", s3_path)
 
 
 def show_versions(bucket, prefix):

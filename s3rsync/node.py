@@ -54,8 +54,8 @@ class LocalNode:
         return LocalNode(
             root_folder=root_folder,
             path=local_path.relative_to(root_folder).as_posix(),
-            modified_time=stat.st_mtime,
-            created_time=stat.st_ctime,
+            modified_time=int(stat.st_mtime),
+            created_time=int(stat.st_ctime),
             size=stat.st_size,
             etag=None
         )

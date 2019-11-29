@@ -77,6 +77,14 @@ class SyncWorker:
             self.sync_timeout.start()
 
 
+class NodeRow(Row):
+    value_types = [RemoteNodeHistory, LocalNode, StoredNodeHistory]
+
+
+class HistoryRow(Row):
+    value_types = [RemoteNodeHistory, StoredNodeHistory]
+
+
 class SyncActionProducer:
     def __init__(self, session: Session):
         self.session = session
@@ -88,7 +96,7 @@ class SyncActionProducer:
         all_nodes = list(chain(remote_history, local_nodes, stored_history))
         all_nodes.sort(key=lambda n: n.key)  # type: ignore
         rows = [
-            Row.create(key, nodes)
+            NodeRow.create(key, nodes)
             for key, nodes in groupby(all_nodes, key=lambda n: n.key)  # type: ignore
         ]
         actions = []
@@ -113,17 +121,20 @@ def fetch_history(session: Session) -> Tuple[List[RemoteNodeHistory], List[Store
     all_history = list(chain(remote_history, stored_history))
     all_history.sort(key=lambda h: h.key)
     rows = [
-        Row.create(key, history)
+        HistoryRow.create(key, history)
         for key, history in groupby(all_history, key=lambda h: h.key)
     ]
     for _, remote, stored in rows:
         if remote:
-            if not stored or remote.modified_time != stored.remote_modified_time:
-                remote.load()
+            if not stored or remote.etag != stored.remote_history_etag:
+                remote.load(session)
             else:
                 remote.history = copy(stored.history)
 
-    return ([r for _, r, s in rows], [s for _, _, s in rows])
+    return (
+        [r for _, r, s in rows if r is not None],
+        [s for _, _, s in rows if s is not None]
+    )
 
 
 def scan_local_files(session: Session) -> Iterable[LocalNode]:

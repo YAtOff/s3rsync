@@ -77,7 +77,7 @@ def upload(
             file_transfer.upload_metadata(session, delta_path, new_key, "delta")
             delta_size = Path(delta_path).stat().st_size
         with create_temp_file() as signature_path:
-            calc_signature(session, node.local_fspath, signature_path)
+            calc_signature(session, node.local_fspath, new_key, signature_path)
             file_transfer.upload_metadata(session, signature_path, new_key, "signature")
 
         history.add_entry(NodeHistoryEntry.create_delta_only(
@@ -85,7 +85,7 @@ def upload(
         ))
     else:
         with create_temp_file() as signature_path:
-            calc_signature(session, node.local_fspath, signature_path)
+            calc_signature(session, node.local_fspath, new_key, signature_path)
             file_transfer.upload_metadata(session, signature_path, new_key, "signature")
 
         version = file_transfer.upload_to_root(session, node)
@@ -100,7 +100,7 @@ def upload(
 
     stored_history = StoredNodeHistory.get_or_none(StoredNodeHistory.key == history.key)
     if stored_history is not None:
-        stored_history.data = history.dict(),
+        stored_history.data = history.dict()
         stored_history.remote_history_etag = remote_history.etag
         stored_history.local_modified_time = node.created_time
         stored_history.local_created_time = node.modified_time
@@ -150,6 +150,7 @@ def download(
         stored_history.data = history.dict()  # type: ignore
         stored_history.local_modified_time = local_node.created_time
         stored_history.local_created_time = local_node.modified_time
+        stored_history.remote_history_etag = remote_history.etag
     else:
         entries, is_absolute = history.diff(None)
         local_path = file_transfer.download_to_root(
@@ -179,10 +180,11 @@ def download(
 
 @action
 def delete_local(
-    node: LocalNode, history: StoredNodeHistory, session: Session
+    node: LocalNode, stored_history: StoredNodeHistory, session: Session
 ) -> SyncActionResult:
+    (session.signature_folder / stored_history.history.last.key).unlink()
     (node.root_folder / node.path).unlink()
-    history.delete()
+    stored_history.delete().execute()
     return SyncActionResult()
 
 
@@ -193,13 +195,14 @@ def delete_remote(
     session: Session,
 ) -> SyncActionResult:
     history = cast(NodeHistory, remote_history.history)
+    (session.signature_folder / history.last.key).unlink()
     s3util.delete_file(
         session.s3_client, session.storage_bucket,
         f"{session.s3_prefix}/{history.path}"
     )
     history.add_delete_marker()
     remote_history.save(session)
-    stored_history.delete()
+    stored_history.delete().execute()
     return SyncActionResult()
 
 
@@ -222,7 +225,7 @@ def save_history(
 
 @action
 def delete_history(stored_history: StoredNodeHistory, session: Session) -> SyncActionResult:
-    stored_history.delete()
+    stored_history.delete().execute()
     return SyncActionResult()
 
 

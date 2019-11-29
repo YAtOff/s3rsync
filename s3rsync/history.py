@@ -13,6 +13,7 @@ from s3rsync.exceptions import MissingNodeHistoryEntryError
 from s3rsync.s3util import download_to_fd, get_file_metadata, upload_from_fd
 from s3rsync.session import Session
 from s3rsync.util.file import hash_path
+from s3rsync.util.timeutil import now_as_iso
 
 
 class NodeHistoryEntry(BaseModel):
@@ -23,6 +24,7 @@ class NodeHistoryEntry(BaseModel):
     base_size: int
     has_delta: bool
     delta_size: int
+    timestamp: str
 
     @classmethod
     def generate_key(cls) -> str:
@@ -37,7 +39,8 @@ class NodeHistoryEntry(BaseModel):
             base_version=None,
             base_size=0,
             has_delta=False,
-            delta_size=0
+            delta_size=0,
+            timestamp=now_as_iso()
         )
 
     @classmethod
@@ -49,7 +52,8 @@ class NodeHistoryEntry(BaseModel):
             base_version=None,
             base_size=0,
             has_delta=True,
-            delta_size=delta_size
+            delta_size=delta_size,
+            timestamp=now_as_iso()
         )
 
     @classmethod
@@ -61,7 +65,8 @@ class NodeHistoryEntry(BaseModel):
             base_version=base_version,
             base_size=base_size,
             has_delta=False,
-            delta_size=0
+            delta_size=0,
+            timestamp=now_as_iso()
         )
 
 
@@ -152,15 +157,15 @@ class RemoteNodeHistory:
 
     def load(self, session: Session) -> None:
         fd = BytesIO()
+        s3_path = f"{session.s3_prefix}/{session.sync_metadata_prefix}/history/{self.key}"
         download_to_fd(
-            session.s3_client,
-            session.internal_bucket,
-            f"{session.s3_prefix}/{session.sync_metadata_prefix}/history/{self.key}",
-            fd,
+            session.s3_client, session.internal_bucket, s3_path, fd,
         )
         fd.seek(0, os.SEEK_SET)
         data = json.load(fd)
         self.history = NodeHistory.parse_obj(data)
+        obj = get_file_metadata(session.s3_client, session.internal_bucket, s3_path)
+        self.etag = obj.get("ETag", "").strip('"')
 
     def save(self, session: Session) -> None:
         if not self.is_loaded:
@@ -172,7 +177,6 @@ class RemoteNodeHistory:
         s3_path = f"{session.s3_prefix}/{session.sync_metadata_prefix}/history/{self.key}"
         upload_from_fd(session.s3_client, fd, session.internal_bucket, s3_path)
         obj = get_file_metadata(session.s3_client, session.internal_bucket, s3_path)
-        self.modified_time = obj["LastModified"],
         self.etag = obj.get("ETag", "").strip('"')
 
     def updated(self, stored) -> bool:
