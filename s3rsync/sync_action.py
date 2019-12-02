@@ -240,5 +240,5 @@ def conflict(
 
 
 @action
-def nop(opaque: Any, session: Session) -> SyncActionResult:
+def nop(session: Session) -> SyncActionResult:
     return SyncActionResult()
