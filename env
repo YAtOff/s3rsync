@@ -1,6 +1,2 @@
 alias s3ls="aws s3 ls"
 alias s3rm="aws s3 rm"
-export rs_entries="s3://vectorworks-devel-storage-internal/rsync.test.1/rsync/entries"
-export rs_history="s3://vectorworks-devel-storage-internal/rsync.test.1/rsync/history"
-export rs_storage="s3://vectorworks-devel-storage/rsync.test.1"
-

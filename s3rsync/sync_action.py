@@ -2,7 +2,7 @@ import os
 from dataclasses import dataclass
 from functools import partial, wraps
 from pathlib import Path
-from typing import Any, Callable, Optional, cast
+from typing import Callable, Optional, cast
 
 from s3rsync import file_transfer, s3util
 from s3rsync.history import NodeHistory, RemoteNodeHistory, NodeHistoryEntry
